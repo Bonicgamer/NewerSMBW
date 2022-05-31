@@ -52,6 +52,8 @@ class daFuzzyBear_c : public daBoss {
 	bool collisionCat14_YoshiFire(ActivePhysics *apThis, ActivePhysics *apOther);
 	bool collisionCatA_PenguinMario(ActivePhysics *apThis, ActivePhysics *apOther);
 
+    dStageActor_c *getNearestPlayer();
+
 	USING_STATES(daFuzzyBear_c);
 	DECLARE_STATE(Grow);
 	DECLARE_STATE(Bounce);
@@ -347,15 +349,45 @@ void daFuzzyBear_c::endState_Grow() {
 }
 
 
+dStageActor_c *daFuzzyBear_c::getNearestPlayer() {
+    dStageActor_c *nearest_plr = NULL;
+
+    for (int i = 0; i < 4; i++) {
+        if (Player_Active[i] != 0 && Player_Lives[Player_ID[i]] > 0) {
+            dStageActor_c *plr = GetSpecificPlayerActor(i);
+            if (nearest_plr == NULL) {
+                nearest_plr = plr;
+            } else if (abs(plr->pos.x - this->pos.x) < abs(nearest_plr->pos.x - this->pos.x)) {
+                nearest_plr = plr;
+            }
+        }
+    }
+
+    return nearest_plr;
+}
 
 // Bounce State
 
 void daFuzzyBear_c::beginState_Bounce() { 
+    dStageActor_c *nearest_plr = this->getNearestPlayer();
+    if (nearest_plr != NULL) {
+        if (nearest_plr->pos.x < this->pos.x) {
+            this->direction = 0;
+        } else {
+            this->direction = 1;
+        }
+    }
 
 	if (this->direction == 0) { this->speed.x = 1.0; }
-	else 					 { this->speed.x = -1.0; }
+	else					{ this->speed.x = -1.0; }
 	
 	if (this->storeSpeed != 0) { this->speed.x = this->storeSpeed; }
+
+    if (this->direction ^ (this->speed.x < 0)) {
+        this->speed.x = this->speed.x;
+    } else {
+        this->speed.x = -this->speed.x;
+    }
 	
 	this->timer = 20;
 }
@@ -401,7 +433,24 @@ void daFuzzyBear_c::executeState_Bounce() {
 		
 		this->timer = this->timer + 1;
 		if (this->speed.x != 0) {
-			this->storeSpeed = this->speed.x; }
+            dStageActor_c *nearest_plr = this->getNearestPlayer();
+
+            if (nearest_plr != NULL) {
+                if (nearest_plr->pos.x < this->pos.x) {
+                    this->direction = 0;
+                } else {
+                    this->direction = 1;
+                }
+
+                if (this->direction ^ (this->speed.x < 0)) {
+                    this->storeSpeed = this->speed.x;
+                } else {
+                    this->storeSpeed = -this->speed.x;
+                }
+            } else {
+                this->storeSpeed = this->speed.x;
+            }
+        }
 		this->speed.x = 0;
 		this->speed.y = 0;
 		
@@ -429,7 +478,6 @@ void daFuzzyBear_c::executeState_Bounce() {
 		}
 			
 		if (this->timer > 20) { 
-			
 			int randChoice;
 			
 			randChoice = GenerateRandomNumber(5);
