@@ -33,6 +33,8 @@ class daFuzzyBear_c : public daBoss {
 	char damage;
 	char roly;
 	char isInvulnerable;
+
+    float x_to_move_to;
 	
 	static daFuzzyBear_c *build();
 
@@ -62,6 +64,9 @@ class daFuzzyBear_c : public daBoss {
 	DECLARE_STATE(RolyPoly);
 	DECLARE_STATE(Wait);
 	DECLARE_STATE(Outro);
+
+	DECLARE_STATE(SlideHor);
+	DECLARE_STATE(SlideVer);
 };
 
 daFuzzyBear_c *daFuzzyBear_c::build() {
@@ -78,6 +83,9 @@ CREATE_STATE(daFuzzyBear_c, Bounce);
 CREATE_STATE(daFuzzyBear_c, RolyPoly);
 CREATE_STATE(daFuzzyBear_c, Wait);
 CREATE_STATE(daFuzzyBear_c, Outro);
+
+CREATE_STATE(daFuzzyBear_c, SlideHor);
+CREATE_STATE(daFuzzyBear_c, SlideVer);
 
 
 
@@ -479,9 +487,6 @@ void daFuzzyBear_c::executeState_Bounce() {
 			
 		if (this->timer > 20) { 
 			int randChoice;
-			
-			randChoice = GenerateRandomNumber(5);
-			if (randChoice == 0) { doStateChange(&StateID_Wait); }
 
 			randChoice = GenerateRandomNumber(4);
 			if (randChoice == 0) { this->speed.y = 8.0; }
@@ -491,6 +496,9 @@ void daFuzzyBear_c::executeState_Bounce() {
 			this->pos.y = this->Baseline + 1;
 			
 			this->speed.x = this->storeSpeed;
+			
+			randChoice = GenerateRandomNumber(5);
+			if (randChoice == 0) { doStateChange(&StateID_SlideHor); }
 		 }
 	}
 	
@@ -785,6 +793,75 @@ void daFuzzyBear_c::executeState_Outro() {
 void daFuzzyBear_c::endState_Outro() { }
 
 
+// SlideHor State
+
+void daFuzzyBear_c::beginState_SlideHor() {
+	this->timer = 0;
+}
+
+void daFuzzyBear_c::executeState_SlideHor() {
+    if ((this->timer < 10) || (this->timer < 30 && this->timer >= 20)) {
+        this->pos.y += 5;
+    } else if ((this->timer >= 10 && this->timer < 20) || (this->timer >= 30 && this->timer < 40)) {
+        this->pos.y -= 5;
+    } else if (this->timer == 40) {
+        dStageActor_c *nearest_plr = this->getNearestPlayer();
+
+        if (nearest_plr != NULL) {
+            this->x_to_move_to = nearest_plr->pos.x;
+        } else {
+            this->x_to_move_to = this->initialPos.x;
+        }
+    } else {
+        if (this->x_to_move_to < this->pos.x) {
+            if (this->pos.x - 5 < this->x_to_move_to) {
+                this->pos.x = this->x_to_move_to;
+            } else {
+                this->pos.x -= 5;
+            }
+        } else if (this->x_to_move_to > this->pos.x) {
+            if (this->pos.x + 5 > this->x_to_move_to) {
+                this->pos.x = this->x_to_move_to;
+            } else {
+                this->pos.x += 5;
+            }
+        } else {
+            doStateChange(&StateID_SlideVer);
+        }
+    }
+
+    this->timer += 1;
+}
+
+void daFuzzyBear_c::endState_SlideHor() {}
 
 
+// SlideVer State
 
+void daFuzzyBear_c::beginState_SlideVer() {
+	this->timer = 0;
+}
+
+void daFuzzyBear_c::executeState_SlideVer() {
+    if (this->timer < 60) {
+        this->pos.y += 5;
+    } else if (this->timer == 60) {
+        dStageActor_c *nearest_plr = this->getNearestPlayer();
+
+        if (nearest_plr != NULL) {
+            this->pos.x = nearest_plr->pos.x;
+        } else {
+            this->pos.x = this->initialPos.x;
+        }
+    } else if (this->timer > 60) {
+        this->pos.y -= 5;
+
+        if (this->pos.y < this->Baseline) {
+            doStateChange(&StateID_Bounce);
+        }
+    }
+
+    this->timer += 1;
+}
+
+void daFuzzyBear_c::endState_SlideVer() {}
